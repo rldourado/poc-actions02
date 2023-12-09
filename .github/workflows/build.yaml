@@ -68,7 +68,7 @@ jobs:
           fi
           git branch
           #### STARTING CHANGES IN EACH DEPLOYMENT IMAGE ####
-          IMAGE_BUILD_LIST="master quest keep list_csv list_html"
+          IMAGE_BUILD_LIST="main quest keep list_csv list_html"
           for module in $IMAGE_BUILD_LIST
           do
             export IMAGE_TAG=$module-v"$GITHUB_RUN_NUMBER"-"$(cut -c 1-7 <<< $GITHUB_SHA)"
