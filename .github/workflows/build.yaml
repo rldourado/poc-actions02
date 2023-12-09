@@ -30,7 +30,6 @@ jobs:
         env:
           DOCKER_USER: ${{ secrets.DOCKER_USER }}
           DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
-          NODE_ENV: ${{ env.NODE_ENV }}
         run: |
           IMAGE_BUILD_LIST="main quest keep list_csv list_html"
           IMAGE_LIST=""
@@ -49,26 +48,26 @@ jobs:
         env:
           DOCKER_USER: ${{ secrets.DOCKER_USER }}
           TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
-          USER_GITHUB: ied-avanti
+          USER_GITHUB: rldourado
           REPO_MANIFESTS_NAME: cep-manifests
-          REPO_MANIFESTS_BRANCH: main
+          REPO_MANIFESTS_BRANCH: master
         run: |
           #### ACCESS GITHUB REPOSITORY ####
           URL_GIT_AUTHENTICATED="https://$USER_GITHUB:$TOKEN_GITHUB@github.com/$USER_GITHUB/cep-manifests.git"
           git clone "$URL_GIT_AUTHENTICATED" /tmp/cep_python_flask2_update_manifests
           cd /tmp/cep_python_flask2_update_manifests
-          if [ $GITHUB_BASE_REF = "main" ]
+          if [ $GITHUB_BASE_REF = "master" ]
           then 
             git checkout $REPO_MANIFESTS_BRANCH
           else
             # Change to testing or develop according to your needs
-            # This way all PR to main will update in manifests branch main
+            # This way all PR to master will update in manifests branch master
             # All PR to other branches will update the brach specified in next line
-            git checkout main
+            git checkout master
           fi
           git branch
           #### STARTING CHANGES IN EACH DEPLOYMENT IMAGE ####
-          IMAGE_BUILD_LIST="main quest keep list_csv list_html"
+          IMAGE_BUILD_LIST="master quest keep list_csv list_html"
           for module in $IMAGE_BUILD_LIST
           do
             export IMAGE_TAG=$module-v"$GITHUB_RUN_NUMBER"-"$(cut -c 1-7 <<< $GITHUB_SHA)"
@@ -94,7 +93,7 @@ jobs:
           git status --short
           if git commit -m "[UPDT] Update deployment image by CI $(date +%Y-%m-%d_%H-%M-%S)"
           then
-            git push origin main
+            git push origin master
           fi
           git status
           ls -la ./
