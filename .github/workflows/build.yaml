@@ -1,6 +1,7 @@
 name: BUILD CEP CODE
 on: 
   - pull_request
+  - push
 jobs:
   build-code:
     timeout-minutes: 8
