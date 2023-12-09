@@ -1,0 +1,102 @@
+name: BUILD CEP CODE
+on: 
+  - pull_request
+jobs:
+  build-code:
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repositoy Checkout
+        uses: actions/checkout@v3
+      - name: Setup Python 3.10.6
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.6
+      - name: Include Docker Labels
+        run: |
+          IMAGE_BUILD_LIST="main quest keep list_csv list_html"
+          for module in $IMAGE_BUILD_LIST
+          do
+            echo "LABEL GITHUB_SHA=$GITHUB_SHA." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_SHA=${GITHUB_SHA: 0:7}." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_RUN_ID=$GITHUB_RUN_ID." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_RUN_NUMBER=$GITHUB_RUN_NUMBER." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_REPOSITORY=$GITHUB_REPOSITORY." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_BASE_REF=$GITHUB_BASE_REF." >> dockerfiles/$module.dockerfile
+            echo "LABEL GITHUB_HEAD_REF=$GITHUB_HEAD_REF." >> dockerfiles/$module.dockerfile
+            cat dockerfiles/$module.dockerfile
+          done
+      - name: BUILD AND PUSH DOCKER IMAGE
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+          NODE_ENV: ${{ env.NODE_ENV }}
+        run: |
+          IMAGE_BUILD_LIST="main quest keep list_csv list_html"
+          IMAGE_LIST=""
+          docker login -u $DOCKER_USER -p $DOCKER_PASS
+          for module in $IMAGE_BUILD_LIST
+          do
+            echo "Building and pushing image for module $module"
+            export IMAGE_TAG=$module-v"$GITHUB_RUN_NUMBER"-"$(cut -c 1-7 <<< $GITHUB_SHA)"
+            docker build -t $DOCKER_USER/$(cut -d'/' -f2 <<< $GITHUB_REPOSITORY):$IMAGE_TAG -f dockerfiles/$module.dockerfile .
+            docker push $DOCKER_USER/$(cut -d'/' -f2 <<< $GITHUB_REPOSITORY):$IMAGE_TAG
+            IMAGE_LIST=$IMAGE_LIST" - $DOCKER_USER/$(cut -d'/' -f2 <<< $GITHUB_REPOSITORY):$IMAGE_TAG"
+            echo "------Build/Push Module $module Finished------"
+          done
+          echo $IMAGE_LIST
+      - name: UPDATE MANIFESTS
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+          USER_GITHUB: ied-avanti
+          REPO_MANIFESTS_NAME: cep-manifests
+          REPO_MANIFESTS_BRANCH: main
+        run: |
+          #### ACCESS GITHUB REPOSITORY ####
+          URL_GIT_AUTHENTICATED="https://$USER_GITHUB:$TOKEN_GITHUB@github.com/$USER_GITHUB/cep-manifests.git"
+          git clone "$URL_GIT_AUTHENTICATED" /tmp/cep_python_flask2_update_manifests
+          cd /tmp/cep_python_flask2_update_manifests
+          if [ $GITHUB_BASE_REF = "main" ]
+          then 
+            git checkout $REPO_MANIFESTS_BRANCH
+          else
+            # Change to testing or develop according to your needs
+            # This way all PR to main will update in manifests branch main
+            # All PR to other branches will update the brach specified in next line
+            git checkout main
+          fi
+          git branch
+          #### STARTING CHANGES IN EACH DEPLOYMENT IMAGE ####
+          IMAGE_BUILD_LIST="main quest keep list_csv list_html"
+          for module in $IMAGE_BUILD_LIST
+          do
+            export IMAGE_TAG=$module-v"$GITHUB_RUN_NUMBER"-"$(cut -c 1-7 <<< $GITHUB_SHA)"
+            echo $IMAGE_TAG
+            #### CHANGE IMAGE NAME ####
+            mv ./deployment-$module.yaml ./old-deployment-$module.bkp
+            TO_REPLACE=" image: [a-z_-]*\/[a-zA-Z0-9_.-]*:[a-z_-]*-v[0-9]*-[a-f0-9]*"
+            REPLACE_FOR=" image: $DOCKER_USER\/$(cut -d'/' -f2 <<< $GITHUB_REPOSITORY):$IMAGE_TAG"
+            sed "s/$TO_REPLACE/$REPLACE_FOR/" \
+                ./old-deployment-$module.bkp > ./deployment-$module.yaml
+            echo "----------Old Deployment----------"
+            cat ./old-deployment-$module.bkp
+            echo "----------NEW Deployment----------"
+            cat ./deployment-$module.yaml
+            #### ADD FILE TO COMMIT ####
+            git add ./old-deployment-$module.bkp
+            git add ./deployment-$module.yaml
+          done
+          #### UPDATE WITH GIT ####
+          git config --global user.name "Github RUN_ID=$GITHUB_RUN_ID"
+          git config --global user.email "no@mail.com"
+          git branch
+          git status --short
+          if git commit -m "[UPDT] Update deployment image by CI $(date +%Y-%m-%d_%H-%M-%S)"
+          then
+            git push origin main
+          fi
+          git status
+          ls -la ./
+          cd -
+          ls -la ./

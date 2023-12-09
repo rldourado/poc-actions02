@@ -1,0 +1,10 @@
+flask==2.2.2
+requests==2.27.1
+# Vulnerability Check
+certifi==2022.12.07
+twisted==22.10
+cryptography==39.0.1
+oauthlib==3.2.1
+babel==2.9.1
+pyjwt==2.4.0
+wheel==0.38.1

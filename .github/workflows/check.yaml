@@ -1,0 +1,43 @@
+# name: CHECK CEP CODE
+# on: 
+#   - push
+# jobs:
+#   check-code:
+#     timeout-minutes: 5
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Repositoy Checkout
+#         uses: actions/checkout@v3
+#       - name: Setup Python 3.10.9
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: 3.10.9
+#       - name: Check Code
+#         run: echo '------------Check Code----------------'
+#       - name: Install Requirements
+#         run: |
+#           echo "Python Version Check"
+#           python --version
+#           sudo python -m pip install --upgrade pip
+#           sudo python -m pip --version
+#           echo "Python Install Requirements"
+#           sudo pip install -r requirements.txt
+#           echo "Python Install Requirements_dev"
+#           sudo pip install -r requirements-dev.txt
+#       - name: CHECK CODE STYLE (CODE SMELS)
+#         # Code style checks did not break the CI
+#         run: |
+#           echo "Check Code Style with PyLint"
+#           (find . -name '*.py'|grep -v 'test_*'|grep -v './.venv*'|xargs sudo pylint) || :
+#       - name: UNIT TESTS
+#         run: |
+#           echo "Unit tests with PyTest"
+#           sudo bash -c 'for var in $(grep -v -e "^#" config/tests_local_vars.env);do export $var; done; pytest -v'
+#       - name: STATIC SECURITY ANALYSIS
+#         run: |
+#           echo "Static Securty Analysis with Bandit"
+#           find . -name '*.py'|grep -v 'test_*'|grep -v './.venv*'|sudo xargs bandit
+#       - name: CHECK DEPENDENCIES VULNERABILITY
+#         run: |
+#           echo "Check Dependencies Vulnerability with Safety"
+#           sudo safety check
